@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+
+	<head>
+
+		<style type="text/css">
+			* { margin:0; padding:0; }
+		</style>
+	
+        <script type="text/javascript">
+            		
+			// Shim layer with setTimeout fallback
+			// Setup for an ideal of 60FPS
+			window.requestAnimationFrame = (function(time){
+			  return  window.requestAnimationFrame       || 
+					  window.webkitRequestAnimationFrame || 
+					  window.mozRequestAnimationFrame    || 
+					  window.oRequestAnimationFrame      || 
+					  window.msRequestAnimationFrame     || 
+					  function( callback ){
+						window.setTimeout(callback, 1000 / 60);
+					  };
+			})();		            
+            
+        </script>
+        
+		<script src="gl-matrix-min.js" type="text/javascript"></script>
+		<script src="glfx.js" type="text/javascript"></script>        
+        
+        <script type="text/javascript">
+            
+            function wglScene() {
+                
+                // init 
+                var canvasElem = document.getElementById('wgl-canvas');
+                glfx.init(canvasElem, 500, 500);
+                
+                // if we don't do anything further, we'll just be clearing the framebuffer on each frame render
+                
+                // Load assets for scene
+                // Load basic shaders for rendering
+                glfx.shaders.load('basic.vs', "vert-shader-basic", glfx.gl.VERTEX_SHADER);
+                glfx.shaders.load('basictex.fs', "frag-shader-tex", glfx.gl.FRAGMENT_SHADER);
+
+                // Load necessary textures
+                glfx.textures.load('img/test.png', 'test-tex');					
+
+                // Load models used in scene
+                glfx.models.load('cube.json', 'cubemdl', glfx.models.jsonParser);
+                
+                glfx.whenAssetsLoaded(function() {
+                                       
+                    // Create shader program from loaded shaders
+                    var shprog = glfx.gl.createProgram();
+                    glfx.gl.attachShader(shprog, glfx.shaders.buffer['vert-shader-basic']);
+                    glfx.gl.attachShader(shprog, glfx.shaders.buffer['frag-shader-tex']);
+                    glfx.gl.linkProgram(shprog);
+
+                    if (!glfx.gl.getProgramParameter(shprog, glfx.gl.LINK_STATUS)) {
+                        alert("Could not create shader program");
+                        return false;
+                    }
+
+                    // Setup variables for shader program
+                    shprog.vertexPositionAttribute = glfx.gl.getAttribLocation(shprog, "aVertexPosition");
+                    glfx.gl.enableVertexAttribArray(shprog.vertexPositionAttribute);			
+
+                    shprog.pMatrixUniform = glfx.gl.getUniformLocation(shprog, "uPMatrix");
+                    shprog.mvMatrixUniform = glfx.gl.getUniformLocation(shprog, "uMVMatrix");
+
+                    shprog.textureCoordAttribute = glfx.gl.getAttribLocation(shprog, "aTextureCoord");
+                    glfx.gl.enableVertexAttribArray(shprog.textureCoordAttribute);						
+                                       
+                                       
+                    // add some cubes to the scene graph
+                    var cubeA = new glfx.scene.worldObject(glfx.models.buffer['cubemdl'], shprog);
+                    cubeA.position = vec3.clone([-1.6, 0.0, -25.0]);
+                    cubeA.rotation = vec3.clone([0.0, 0.0, 0.0]);
+                    cubeA.scale = vec3.clone([0.70, 1.0, 1.0]);
+                    cubeA.render = function(tdelta, wobj, matModelView, matPerspective) {
+                        // Setup shader program to use
+                        var shprog = wobj.shprog;
+                        glfx.gl.useProgram(shprog);	
+
+                        var tex = glfx.textures.buffer['test-tex'];				
+                        glfx.gl.activeTexture(glfx.gl.TEXTURE0);
+                        glfx.gl.bindTexture(glfx.gl.TEXTURE_2D, tex);
+                        glfx.gl.uniform1i(shprog.samplerUniform, 0);
+
+
+                        glfx.gl.bindBuffer(glfx.gl.ARRAY_BUFFER, wobj.base.vertexBuffer);
+                        glfx.gl.vertexAttribPointer(shprog.vertexPositionAttribute, wobj.base.vertexBuffer.itemSize, glfx.gl.FLOAT, false, 0, 0);				
+
+                        glfx.gl.bindBuffer(glfx.gl.ARRAY_BUFFER, wobj.base.texcoordBuffer);
+                        glfx.gl.vertexAttribPointer(shprog.textureCoordAttribute, wobj.base.texcoordBuffer.itemSize, glfx.gl.FLOAT, false, 0, 0);					
+
+                        glfx.gl.uniformMatrix4fv(shprog.pMatrixUniform, false, matPerspective);
+                        glfx.gl.uniformMatrix4fv(shprog.mvMatrixUniform, false, matModelView);				
+
+                        glfx.gl.bindBuffer(glfx.gl.ELEMENT_ARRAY_BUFFER, wobj.base.indexBuffer);
+                        glfx.gl.drawElements(glfx.gl.TRIANGLES, wobj.base.indexBuffer.numItems, glfx.gl.UNSIGNED_SHORT, 0);	                        
+                    }
+                    
+                    cubeA.update = function(tdelta, wobj) {
+                        
+                        // some code to position and spin cubeA
+                        
+                        if(wobj.position[2] < -5.0) {
+                            wobj.position[2] += 0.022 * tdelta;
+                        } else {
+                            wobj.position[2] = -5.0;
+                        }
+                        
+                        wobj.rotation[0] = 0.35;
+                        wobj.rotation[1] += -(75 * tdelta) / 50000.0;
+                        if( Math.abs(wobj.rotation[1]) >= 2.0*Math.PI ) {
+                            wobj.rotation[1] = 0.0;
+                        }                 
+                    }                    
+                    glfx.scene.addWorldObject( cubeA );               
+
+
+                    // Add another cube to the scene
+                    var cubeB = new glfx.scene.worldObject(glfx.models.buffer['cubemdl'], shprog);
+                    cubeB.position = vec3.clone([1.6, 0.0, -25.0]);
+                    cubeB.rotation = vec3.clone([0.0, 0.0, 0.0]);
+                    cubeB.scale = vec3.clone([0.70, 1.0, 1.0]);
+                    cubeB.update = function(tdelta, wobj) {
+                        // some code to position and spin cubeB
+                        if(cubeA.position[2] > -15.0) {
+                            if(wobj.position[2] < -5.0) {
+                                wobj.position[2] += 0.022 * tdelta;
+                            } else {
+                                wobj.position[2] = -5.0;
+                            }                      
+                        }
+                        
+                        wobj.rotation[0] = 0.35;
+                        wobj.rotation[1] += -(75 * tdelta) / 50000.0;
+                        if( Math.abs(wobj.rotation[1]) >= 2.0*Math.PI ) {
+                            wobj.rotation[1] = 0.0;
+                        }                   
+                    }                 
+                    
+                    cubeB.render = function(tdelta, wobj, matModelView, matPerspective) {
+                        // Setup shader program to use
+                        var shprog = wobj.shprog;
+                        glfx.gl.useProgram(shprog);	
+
+                        var tex = glfx.textures.buffer['test-tex'];				
+                        glfx.gl.activeTexture(glfx.gl.TEXTURE0);
+                        glfx.gl.bindTexture(glfx.gl.TEXTURE_2D, tex);
+                        glfx.gl.uniform1i(shprog.samplerUniform, 0);
+
+
+                        glfx.gl.bindBuffer(glfx.gl.ARRAY_BUFFER, wobj.base.vertexBuffer);
+                        glfx.gl.vertexAttribPointer(shprog.vertexPositionAttribute, wobj.base.vertexBuffer.itemSize, glfx.gl.FLOAT, false, 0, 0);				
+
+                        glfx.gl.bindBuffer(glfx.gl.ARRAY_BUFFER, wobj.base.texcoordBuffer);
+                        glfx.gl.vertexAttribPointer(shprog.textureCoordAttribute, wobj.base.texcoordBuffer.itemSize, glfx.gl.FLOAT, false, 0, 0);					
+
+                        glfx.gl.uniformMatrix4fv(shprog.pMatrixUniform, false, matPerspective);
+                        glfx.gl.uniformMatrix4fv(shprog.mvMatrixUniform, false, matModelView);				
+
+                        glfx.gl.bindBuffer(glfx.gl.ELEMENT_ARRAY_BUFFER, wobj.base.indexBuffer);
+                        glfx.gl.drawElements(glfx.gl.TRIANGLES, wobj.base.indexBuffer.numItems, glfx.gl.UNSIGNED_SHORT, 0);	                        
+                    }                    
+                    
+                    glfx.scene.addWorldObject( cubeB );                      
+                    
+                });
+                
+               
+                
+                
+            }
+            
+        </script>
+        
+	</head>
+	
+	<body onload="wglScene();" style="overflow:hidden;">
+	
+		<div>
+			<canvas id="wgl-canvas" style="width:500px; height:500px; overflow:hidden;" width="1000" height="1000"></canvas>
+		</div>
+		
+	</body>
+
+</html>
