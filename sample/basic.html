@@ -33,7 +33,7 @@
                 
                 // init 
                 var canvasElem = document.getElementById('wgl-canvas');
-                glfx.init(canvasElem, 500, 500);
+                glfx.init(canvasElem, 800, 800);
                 
                 // if we don't do anything further, we'll just be clearing the framebuffer on each frame render
                 
@@ -41,6 +41,7 @@
                 // Load basic shaders for rendering
                 glfx.shaders.load('basic.vs', "vert-shader-basic", glfx.gl.VERTEX_SHADER);
                 glfx.shaders.load('basictex.fs', "frag-shader-tex", glfx.gl.FRAGMENT_SHADER);
+                glfx.shaders.load('screenspace.fs', "frag-shader-screenspace", glfx.gl.FRAGMENT_SHADER);
 
                 // Load necessary textures
                 glfx.textures.load('img/test.png', 'test-tex');					
@@ -49,28 +50,37 @@
                 glfx.models.load('cube.json', 'cubemdl', glfx.models.jsonParser);
                 
                 glfx.whenAssetsLoaded(function() {
-                                       
-                    // Create shader program from loaded shaders
-                    var shprog = glfx.gl.createProgram();
-                    glfx.gl.attachShader(shprog, glfx.shaders.buffer['vert-shader-basic']);
-                    glfx.gl.attachShader(shprog, glfx.shaders.buffer['frag-shader-tex']);
-                    glfx.gl.linkProgram(shprog);
+                
+                
+                    var shprog = glfx.shaders.createProgram([glfx.shaders.buffer['vert-shader-basic'], glfx.shaders.buffer['frag-shader-tex']], 
+                                                            function(_shprog) {
 
-                    if (!glfx.gl.getProgramParameter(shprog, glfx.gl.LINK_STATUS)) {
-                        alert("Could not create shader program");
-                        return false;
-                    }
+                                                                // Setup variables for shader program
+                                                                _shprog.vertexPositionAttribute = glfx.gl.getAttribLocation(_shprog, "aVertexPosition");
+                                                                _shprog.pMatrixUniform = glfx.gl.getUniformLocation(_shprog, "uPMatrix");
+                                                                _shprog.mvMatrixUniform = glfx.gl.getUniformLocation(_shprog, "uMVMatrix");
+                                                                _shprog.textureCoordAttribute = glfx.gl.getAttribLocation(_shprog, "aTextureCoord");
+                                                                 
+                                                                glfx.gl.enableVertexAttribArray(_shprog.vertexPositionAttribute);
+                                                                glfx.gl.enableVertexAttribArray(_shprog.textureCoordAttribute);
 
-                    // Setup variables for shader program
-                    shprog.vertexPositionAttribute = glfx.gl.getAttribLocation(shprog, "aVertexPosition");
-                    glfx.gl.enableVertexAttribArray(shprog.vertexPositionAttribute);			
+                                                            });
 
-                    shprog.pMatrixUniform = glfx.gl.getUniformLocation(shprog, "uPMatrix");
-                    shprog.mvMatrixUniform = glfx.gl.getUniformLocation(shprog, "uMVMatrix");
 
-                    shprog.textureCoordAttribute = glfx.gl.getAttribLocation(shprog, "aTextureCoord");
-                    glfx.gl.enableVertexAttribArray(shprog.textureCoordAttribute);						
-                                       
+                    var postProcessShaderProgram = glfx.shaders.createProgram([glfx.shaders.buffer['vert-shader-basic'], glfx.shaders.buffer['frag-shader-screenspace']], 
+                                                            function(_shprog) {
+
+                                                                // Setup variables for shader program
+                                                                _shprog.vertexPositionAttribute = glfx.gl.getAttribLocation(_shprog, "aVertexPosition");
+                                                                _shprog.pMatrixUniform = glfx.gl.getUniformLocation(_shprog, "uPMatrix");
+                                                                _shprog.mvMatrixUniform = glfx.gl.getUniformLocation(_shprog, "uMVMatrix");
+                                                                _shprog.textureCoordAttribute = glfx.gl.getAttribLocation(_shprog, "aTextureCoord");
+                                                                
+                                                                glfx.gl.enableVertexAttribArray(_shprog.vertexPositionAttribute);
+                                                                glfx.gl.enableVertexAttribArray(_shprog.textureCoordAttribute);
+
+                                                            });
+                                                                              
                                        
                     // add some cubes to the scene graph
                     var cubeA = new glfx.scene.worldObject(glfx.models.buffer['cubemdl'], shprog);
@@ -99,7 +109,7 @@
 
                         glfx.gl.bindBuffer(glfx.gl.ELEMENT_ARRAY_BUFFER, wobj.base.indexBuffer);
                         glfx.gl.drawElements(glfx.gl.TRIANGLES, wobj.base.indexBuffer.numItems, glfx.gl.UNSIGNED_SHORT, 0);	                        
-                    }
+                    };
                     
                     cubeA.update = function(tdelta, wobj) {
                         
@@ -116,8 +126,8 @@
                         if( Math.abs(wobj.rotation[1]) >= 2.0*Math.PI ) {
                             wobj.rotation[1] = 0.0;
                         }                 
-                    }                    
-                    glfx.scene.addWorldObject( cubeA );               
+                    };
+              
 
 
                     // Add another cube to the scene
@@ -128,10 +138,10 @@
                     cubeB.update = function(tdelta, wobj) {
                         // some code to position and spin cubeB
                         if(cubeA.position[2] > -15.0) {
-                            if(wobj.position[2] < -5.0) {
+                            if(wobj.position[2] < -15.0) {
                                 wobj.position[2] += 0.022 * tdelta;
                             } else {
-                                wobj.position[2] = -5.0;
+                                wobj.position[2] = -15.0;
                             }                      
                         }
                         
@@ -140,7 +150,7 @@
                         if( Math.abs(wobj.rotation[1]) >= 2.0*Math.PI ) {
                             wobj.rotation[1] = 0.0;
                         }                   
-                    }                 
+                    };
                     
                     cubeB.render = function(tdelta, wobj, matModelView, matPerspective) {
                         // Setup shader program to use
@@ -164,9 +174,11 @@
 
                         glfx.gl.bindBuffer(glfx.gl.ELEMENT_ARRAY_BUFFER, wobj.base.indexBuffer);
                         glfx.gl.drawElements(glfx.gl.TRIANGLES, wobj.base.indexBuffer.numItems, glfx.gl.UNSIGNED_SHORT, 0);	                        
-                    }                    
-                    
-                    glfx.scene.addWorldObject( cubeB );                      
+                    };
+
+                    glfx.scene.addWorldObject( cubeA );
+                    glfx.scene.addWorldObject( cubeB );
+                    glfx.scene.setPostProcessShaderProgram(postProcessShaderProgram);
                     
                 });
                 
@@ -182,7 +194,7 @@
 	<body onload="wglScene();" style="overflow:hidden;">
 	
 		<div>
-			<canvas id="wgl-canvas" style="width:500px; height:500px; overflow:hidden;" width="1000" height="1000"></canvas>
+			<canvas id="wgl-canvas" style="width:800px; height:800px; overflow:hidden;" width="800" height="800"></canvas>
 		</div>
 		
 	</body>
