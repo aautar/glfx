@@ -75,6 +75,8 @@
                                                                 _shprog.pMatrixUniform = glfx.gl.getUniformLocation(_shprog, "uPMatrix");
                                                                 _shprog.mvMatrixUniform = glfx.gl.getUniformLocation(_shprog, "uMVMatrix");
                                                                 _shprog.textureCoordAttribute = glfx.gl.getAttribLocation(_shprog, "aTextureCoord");
+
+                                                                _shprog.uPeriod = glfx.gl.getUniformLocation(_shprog, "uPeriod");
                                                                 
                                                                 glfx.gl.enableVertexAttribArray(_shprog.vertexPositionAttribute);
                                                                 glfx.gl.enableVertexAttribArray(_shprog.textureCoordAttribute);
@@ -114,12 +116,7 @@
                     cubeA.update = function(tdelta, wobj) {
                         
                         // some code to position and spin cubeA
-                        
-                        if(wobj.position[2] < -5.0) {
-                            wobj.position[2] += 0.022 * tdelta;
-                        } else {
-                            wobj.position[2] = -5.0;
-                        }
+                        wobj.position[2] = -5.0;
                         
                         wobj.rotation[0] = 0.35;
                         wobj.rotation[1] += -(75 * tdelta) / 50000.0;
@@ -137,14 +134,8 @@
                     cubeB.scale = vec3.clone([0.70, 1.0, 1.0]);
                     cubeB.update = function(tdelta, wobj) {
                         // some code to position and spin cubeB
-                        if(cubeA.position[2] > -15.0) {
-                            if(wobj.position[2] < -15.0) {
-                                wobj.position[2] += 0.022 * tdelta;
-                            } else {
-                                wobj.position[2] = -15.0;
-                            }                      
-                        }
-                        
+                         wobj.position[2] = -15.0;
+                       
                         wobj.rotation[0] = 0.35;
                         wobj.rotation[1] += -(75 * tdelta) / 50000.0;
                         if( Math.abs(wobj.rotation[1]) >= 2.0*Math.PI ) {
@@ -179,10 +170,21 @@
                     glfx.scene.addWorldObject( cubeA );
                     glfx.scene.addWorldObject( cubeB );
                     glfx.scene.setPostProcessShaderProgram(postProcessShaderProgram);
-                    
+
+
+                    var startTime = Date.now();
+                    glfx.onSceneRender = function(tdelta) {
+                        var timeScaled = (Date.now() - startTime) * 0.000107 * tdelta;
+                        var period = Math.cos(timeScaled);
+
+                        if(timeScaled >= 2.0*Math.PI) {
+                            startTime = Date.now();
+                        }
+
+                        glfx.gl.uniform1f(postProcessShaderProgram.uPeriod, period + 1.0);
+                    };
+
                 });
-                
-               
                 
                 
             }
