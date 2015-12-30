@@ -77,6 +77,8 @@
                                                                 _shprog.textureCoordAttribute = glfx.gl.getAttribLocation(_shprog, "aTextureCoord");
 
                                                                 _shprog.uPeriod = glfx.gl.getUniformLocation(_shprog, "uPeriod");
+                                                                _shprog.uSceneWidth = glfx.gl.getUniformLocation(_shprog, "uSceneWidth");
+                                                                _shprog.uSceneHeight = glfx.gl.getUniformLocation(_shprog, "uSceneHeight");
                                                                 
                                                                 glfx.gl.enableVertexAttribArray(_shprog.vertexPositionAttribute);
                                                                 glfx.gl.enableVertexAttribArray(_shprog.textureCoordAttribute);
@@ -184,6 +186,9 @@
 
                         var period = Math.cos(timeScaled);
                         glfx.gl.uniform1f(postProcessShaderProgram.uPeriod, period + 1.0);
+
+                        glfx.gl.uniform1f(postProcessShaderProgram.uSceneWidth, glfx.gl.viewportWidth);
+                        glfx.gl.uniform1f(postProcessShaderProgram.uSceneHeight, glfx.gl.viewportHeight);
                     };
 
                 });
