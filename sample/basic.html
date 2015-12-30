@@ -171,16 +171,18 @@
                     glfx.scene.addWorldObject( cubeB );
                     glfx.scene.setPostProcessShaderProgram(postProcessShaderProgram);
 
+                    var timeAcc = 0;
+                    glfx.scene.onPostProcessPreDraw = function(tdelta) {
 
-                    var startTime = Date.now();
-                    glfx.onSceneRender = function(tdelta) {
-                        var timeScaled = (Date.now() - startTime) * 0.000107 * tdelta;
-                        var period = Math.cos(timeScaled);
+                        timeAcc += tdelta;
+                        var timeScaled = timeAcc * 0.00107;
 
-                        if(timeScaled >= 2.0*Math.PI) {
-                            startTime = Date.now();
+                        if(timeScaled > 2.0*Math.PI) {
+                            timeScaled = 0;
+                            timeAcc = 0;
                         }
 
+                        var period = Math.cos(timeScaled);
                         glfx.gl.uniform1f(postProcessShaderProgram.uPeriod, period + 1.0);
                     };
 
