@@ -26,9 +26,10 @@
                 var boxesScene = Object.create(glfx.scene).init();
                 boxesScene.setupRenderToTexture();
 
+                var boxesSceneTexture = null;
                 glfx.renderAllScenes = function(_time) {
-                    var rtt = boxesScene.render(_time);
-                    viewportQuadScene.renderViewportScene(_time, rtt);
+                    boxesSceneTexture = boxesScene.render(_time);
+                    viewportQuadScene.render(_time);
                 };
 
                 // if we don't do anything further, we'll just be clearing the framebuffer on each frame render
@@ -170,24 +171,52 @@
                     boxesScene.addWorldObject( cubeA );
                     boxesScene.addWorldObject( cubeB );
 
-                    var timeAcc = 0;
-                    viewportQuadScene.setPostProcessShaderProgram(postProcessShaderProgram);
-                    viewportQuadScene.onPostProcessPreDraw = function(tdelta) {
+                    var quad = Object.create(glfx.scene.screenObject);
+                    quad.init(glfx.models.buffer['rttquad'], postProcessShaderProgram);
+                    quad.timeAcc = 0;
+                    quad.timeScaled = 0;
 
-                        timeAcc += tdelta;
-                        var timeScaled = timeAcc * 0.00107;
+                    quad.update = function(tdelta, screenObj) {
+                        quad.timeAcc += tdelta;
+                        quad.timeScaled = quad.timeAcc * 0.00107;
 
-                        if(timeScaled > 2.0*Math.PI) {
-                            timeScaled = 0;
-                            timeAcc = 0;
+                        if(quad.timeScaled > 2.0*Math.PI) {
+                            quad.timeScaled = 0;
+                            quad.timeAcc = 0;
                         }
+                    };
 
-                        var period = Math.cos(timeScaled);
+                    quad.render = function(tdelta, screenObj, matModelView, matPerspective) {
+
+                        var shprog = screenObj.shprog;
+                        glfx.gl.useProgram(shprog);
+
+                        var tex = boxesSceneTexture;
+
+                        glfx.gl.activeTexture(glfx.gl.TEXTURE0);
+                        glfx.gl.bindTexture(glfx.gl.TEXTURE_2D, tex);
+                        glfx.gl.uniform1i(shprog.samplerUniform, 0);
+
+                        glfx.gl.bindBuffer(glfx.gl.ARRAY_BUFFER, screenObj.base.vertexBuffer);
+                        glfx.gl.vertexAttribPointer(shprog.vertexPositionAttribute, screenObj.base.vertexBuffer.itemSize, glfx.gl.FLOAT, false, 0, 0);
+
+                        glfx.gl.bindBuffer(glfx.gl.ARRAY_BUFFER, screenObj.base.texcoordBuffer);
+                        glfx.gl.vertexAttribPointer(shprog.textureCoordAttribute, screenObj.base.texcoordBuffer.itemSize, glfx.gl.FLOAT, false, 0, 0);
+
+                        glfx.gl.uniformMatrix4fv(shprog.pMatrixUniform, false, matPerspective);
+                        glfx.gl.uniformMatrix4fv(shprog.mvMatrixUniform, false, matModelView);
+
+                        glfx.gl.bindBuffer(glfx.gl.ELEMENT_ARRAY_BUFFER, screenObj.base.indexBuffer);
+
+                        var period = Math.cos(quad.timeScaled);
                         glfx.gl.uniform1f(postProcessShaderProgram.uPeriod, period + 1.0);
-
                         glfx.gl.uniform1f(postProcessShaderProgram.uSceneWidth, glfx.gl.viewportWidth);
                         glfx.gl.uniform1f(postProcessShaderProgram.uSceneHeight, glfx.gl.viewportHeight);
+
+                        glfx.gl.drawElements(glfx.gl.TRIANGLE_STRIP, screenObj.base.indexBuffer.numItems, glfx.gl.UNSIGNED_SHORT, 0);
                     };
+
+                    viewportQuadScene.addScreenObject(quad);
 
                 });
                 
