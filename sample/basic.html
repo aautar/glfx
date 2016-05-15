@@ -8,16 +8,29 @@
 		</style>
 	       
 		<script src="../lib/gl-matrix/gl-matrix-min.js" type="text/javascript"></script>
-		<script src="../lib/glfx/glfx.js" type="text/javascript"></script>        
+		<script src="../lib/glfx/glfx.js" type="text/javascript"></script>
+        <script src="../lib/glfx/scene.js" type="text/javascript"></script>
         
         <script type="text/javascript">
-            
+
             function wglScene() {
                 
                 // init 
                 var canvasElem = document.getElementById('wgl-canvas');
+
                 glfx.init(canvasElem, 800, 800);
-                
+
+                // Setup scenes and set glfx.renderAllScenes() function describing how scenes are rendered
+                var viewportQuadScene = glfx.defaultScene;
+
+                var boxesScene = Object.create(glfx.scene).init();
+                boxesScene.setupRenderToTexture();
+
+                glfx.renderAllScenes = function(_time) {
+                    var rtt = boxesScene.render(_time);
+                    viewportQuadScene.renderViewportScene(_time, rtt);
+                };
+
                 // if we don't do anything further, we'll just be clearing the framebuffer on each frame render
                 
                 // Load assets for scene
@@ -70,7 +83,8 @@
                                                                               
                                        
                     // add some cubes to the scene graph
-                    var cubeA = new glfx.scene.worldObject(glfx.models.buffer['cubemdl'], shprog);
+                    var cubeA = Object.create(glfx.scene.worldObject);
+                    cubeA.init(glfx.models.buffer['cubemdl'], shprog);
                     cubeA.position = vec3.clone([-1.6, 0.0, -25.0]);
                     cubeA.rotation = vec3.clone([0.0, 0.0, 0.0]);
                     cubeA.scale = vec3.clone([0.70, 1.0, 1.0]);
@@ -113,7 +127,8 @@
 
 
                     // Add another cube to the scene
-                    var cubeB = new glfx.scene.worldObject(glfx.models.buffer['cubemdl'], shprog);
+                    var cubeB = Object.create(glfx.scene.worldObject);
+                    cubeB.init(glfx.models.buffer['cubemdl'], shprog);
                     cubeB.position = vec3.clone([1.6, 0.0, -25.0]);
                     cubeB.rotation = vec3.clone([0.0, 0.0, 0.0]);
                     cubeB.scale = vec3.clone([0.70, 1.0, 1.0]);
@@ -152,12 +167,12 @@
                         glfx.gl.drawElements(glfx.gl.TRIANGLES, wobj.base.indexBuffer.numItems, glfx.gl.UNSIGNED_SHORT, 0);	                        
                     };
 
-                    glfx.scene.addWorldObject( cubeA );
-                    glfx.scene.addWorldObject( cubeB );
-                    glfx.scene.setPostProcessShaderProgram(postProcessShaderProgram);
+                    boxesScene.addWorldObject( cubeA );
+                    boxesScene.addWorldObject( cubeB );
 
                     var timeAcc = 0;
-                    glfx.scene.onPostProcessPreDraw = function(tdelta) {
+                    viewportQuadScene.setPostProcessShaderProgram(postProcessShaderProgram);
+                    viewportQuadScene.onPostProcessPreDraw = function(tdelta) {
 
                         timeAcc += tdelta;
                         var timeScaled = timeAcc * 0.00107;
