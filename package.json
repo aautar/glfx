@@ -1,0 +1,33 @@
+{
+  "name": "glfx",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aautar/glfx.git"
+  },
+  "author": "Avishkar Autar <aautar@digital-radiation.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/aautar/glfx/issues"
+  },
+  "homepage": "https://github.com/aautar/glfx#readme",
+  "dependencies": {
+    "gl-matrix": "^3.1.0"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.6.0",
+    "@babel/core": "^7.6.0",
+    "@babel/preset-env": "^7.6.0",
+    "babel-preset-minify": "^0.5.1",
+    "rollup-plugin-babel": "^4.3.3",
+    "rollup-plugin-node-resolve": "^5.2.0"
+  }
+}
