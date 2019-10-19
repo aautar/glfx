@@ -52,19 +52,23 @@
                     glfx.whenAssetsLoaded(function() {
                     
                     
-                        var shprog = glfx.shaders.createProgram([glfx.shaders.buffer['vert-shader-basic'], glfx.shaders.buffer['frag-shader-tex']], 
-                                                                function(_shprog) {
+                        var shprog = glfx.shaders.createProgram(
+                            [
+                                glfx.shaders.buffer['vert-shader-basic'], 
+                                glfx.shaders.buffer['frag-shader-tex']
+                            ], 
+                            function(_shprog) {
 
-                                                                    // Setup variables for shader program
-                                                                    _shprog.vertexPositionAttribute = glfx.gl.getAttribLocation(_shprog, "aVertexPosition");
-                                                                    _shprog.pMatrixUniform = glfx.gl.getUniformLocation(_shprog, "uPMatrix");
-                                                                    _shprog.mvMatrixUniform = glfx.gl.getUniformLocation(_shprog, "uMVMatrix");
-                                                                    _shprog.textureCoordAttribute = glfx.gl.getAttribLocation(_shprog, "aTextureCoord");
-                                                                    
-                                                                    glfx.gl.enableVertexAttribArray(_shprog.vertexPositionAttribute);
-                                                                    glfx.gl.enableVertexAttribArray(_shprog.textureCoordAttribute);
+                                // Setup variables for shader program
+                                _shprog.vertexPositionAttribute = glfx.gl.getAttribLocation(_shprog, "aVertexPosition");
+                                _shprog.pMatrixUniform = glfx.gl.getUniformLocation(_shprog, "uPMatrix");
+                                _shprog.mvMatrixUniform = glfx.gl.getUniformLocation(_shprog, "uMVMatrix");
+                                _shprog.textureCoordAttribute = glfx.gl.getAttribLocation(_shprog, "aTextureCoord");
+                                
+                                glfx.gl.enableVertexAttribArray(_shprog.vertexPositionAttribute);
+                                glfx.gl.enableVertexAttribArray(_shprog.textureCoordAttribute);
 
-                                                                });
+                            });
 
 
                         var postProcessShaderProgram = glfx.shaders.createProgram([glfx.shaders.buffer['vert-shader-basic'], glfx.shaders.buffer['frag-shader-screenspace']], 

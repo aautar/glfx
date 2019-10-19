@@ -2723,6 +2723,68 @@ var vec3 = /*#__PURE__*/Object.freeze({
   forEach: forEach
 });
 
+const Model = function() {
+    this.vertexBuffer = null;
+    this.indexBuffer = null;
+    this.texcoordBuffer = null;
+    this.normalBuffer = null;
+};
+
+Model.createScreenQuadStrip = function(_gl) {
+    var mdlJSON = {};
+    mdlJSON.verts = [ -1.0,  1.0,  0.0,
+                      -1.0, -1.0,  0.0,
+                       1.0, -1.0,  0.0,
+                       1.0,  1.0,  0.0
+                      ];
+                  
+    mdlJSON.normals = [];
+    mdlJSON.indices = [0, 1, 3, 2];
+    
+    mdlJSON.texcoords = [
+         0.0, 1.0,
+         0.0, 0.0,
+         1.0, 0.0,
+         1.0, 1.0
+    ];
+        
+    return Model.fromJson(_gl, mdlJSON);   
+};
+
+Model.fromJson = function(_gl, _jsonData) {
+    const mdl = new Model();
+
+    mdl.vertexBuffer = _gl.createBuffer();
+    _gl.bindBuffer(_gl.ARRAY_BUFFER, mdl.vertexBuffer);                        
+    _gl.bufferData(_gl.ARRAY_BUFFER, new Float32Array(_jsonData.verts), _gl.STATIC_DRAW);
+    mdl.vertexBuffer.itemSize = 3;
+    mdl.vertexBuffer.numItems = _jsonData.verts.length / 3;
+
+    mdl.indexBuffer = _gl.createBuffer();
+    _gl.bindBuffer(_gl.ELEMENT_ARRAY_BUFFER, mdl.indexBuffer);
+    _gl.bufferData(_gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(_jsonData.indices), _gl.STATIC_DRAW);
+    mdl.indexBuffer.itemSize = 1;
+    mdl.indexBuffer.numItems = _jsonData.indices.length;		
+
+    if(_jsonData.texcoords.length > 0) {
+        mdl.texcoordBuffer = _gl.createBuffer();
+        _gl.bindBuffer(_gl.ARRAY_BUFFER, mdl.texcoordBuffer);                        
+        _gl.bufferData(_gl.ARRAY_BUFFER, new Float32Array(_jsonData.texcoords), _gl.STATIC_DRAW);
+        mdl.texcoordBuffer.itemSize = 2;
+        mdl.texcoordBuffer.numItems = _jsonData.texcoords.length / 2;			                        
+    }
+
+    if(_jsonData.normals.length > 0) {
+        mdl.normalBuffer = _gl.createBuffer();
+        _gl.bindBuffer(_gl.ARRAY_BUFFER, mdl.normalBuffer);       
+        _gl.bufferData(_gl.ARRAY_BUFFER, new Float32Array(_jsonData.normals), _gl.STATIC_DRAW);
+        mdl.normalBuffer.itemSize = 3;
+        mdl.normalBuffer.numItems = _jsonData.normals / 3;                            
+    }                
+    
+    return mdl;
+};
+
 // glfx object wraps everything necessary for the rendering interface
 var glfx = { };
 
@@ -2788,34 +2850,39 @@ glfx.shaders.buffer = new Array();
 //   _type = gl.VERTEX_SHADER / gl.FRAGMENT_SHADER
 //   _callback = function to call after shader is created, shader object passed is shader is successfully compiled, null otherwise
 glfx.shaders.load = function(_url, _name, _type, _callback) {
-    glfx.decAssetRef();
 
-    var xmlhttp = new XMLHttpRequest();
-    xmlhttp.onreadystatechange = function() {				
-        if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+    return new Promise((resolve, reject) => {
+        glfx.decAssetRef();
 
-            var shaderSrc = xmlhttp.responseText;
-            var shader = glfx.gl.createShader(_type);
+        var xmlhttp = new XMLHttpRequest();
+        xmlhttp.onreadystatechange = function() {				
+            if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
 
-            glfx.gl.shaderSource(shader, shaderSrc);
-            glfx.gl.compileShader(shader);
+                var shaderSrc = xmlhttp.responseText;
+                var shader = glfx.gl.createShader(_type);
 
-            if (!glfx.gl.getShaderParameter(shader, glfx.gl.COMPILE_STATUS)) {
-                glfx.echo("Failed to compile shader: " + _url);
-                shader = null;
+                glfx.gl.shaderSource(shader, shaderSrc);
+                glfx.gl.compileShader(shader);
+
+                if (!glfx.gl.getShaderParameter(shader, glfx.gl.COMPILE_STATUS)) {
+                    glfx.echo("Failed to compile shader: " + _url);
+                    shader = null;
+                }
+
+                if(typeof _callback !== 'undefined') {
+                    _callback(shader);
+                }
+
+                glfx.shaders.buffer[_name] = shader;
+                glfx.incAssetRef();
+
+                resolve(shader);
             }
+        };
 
-            if(typeof _callback !== 'undefined') {
-                _callback(shader);
-            }
-
-            glfx.shaders.buffer[_name] = shader;
-            glfx.incAssetRef();
-        }
-    };
-
-    xmlhttp.open("GET", _url, true);
-    xmlhttp.send();
+        xmlhttp.open("GET", _url, true);
+        xmlhttp.send();
+    });
 }; 
 
 
@@ -2875,64 +2942,14 @@ glfx.textures.load = function(_path, _name) {
     tex.image.src = _path;			
 };
 
-
-// Model class
-glfx.model = function() {
-
-    this.vertexBuffer = null;
-    this.indexBuffer = null;
-    this.texcoordBuffer = null;
-    this.normalBuffer = null;
-
-};
-
 // Models class
 glfx.models = { };
 // Models array
 glfx.models.buffer = new Array();
 // Method to parse JSON model
-glfx.models.jsonParser = function(_data) {   
-
+glfx.models.jsonParser = function(_data) {
     var data = JSON.parse(_data);
-    return glfx.models.jsonLoad(data);
-};
-
-glfx.models.jsonLoad = function(_jsonData) {    
-
-    var data = _jsonData;
-
-    var mdl = new glfx.model();
-
-    mdl.vertexBuffer = glfx.gl.createBuffer();
-    glfx.gl.bindBuffer(glfx.gl.ARRAY_BUFFER, mdl.vertexBuffer);                        
-    glfx.gl.bufferData(glfx.gl.ARRAY_BUFFER, new Float32Array(data.verts), glfx.gl.STATIC_DRAW);
-    mdl.vertexBuffer.itemSize = 3;
-    mdl.vertexBuffer.numItems = data.verts.length / 3;
-
-    mdl.indexBuffer = glfx.gl.createBuffer();
-    glfx.gl.bindBuffer(glfx.gl.ELEMENT_ARRAY_BUFFER, mdl.indexBuffer);
-    glfx.gl.bufferData(glfx.gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(data.indices), glfx.gl.STATIC_DRAW);
-    mdl.indexBuffer.itemSize = 1;
-    mdl.indexBuffer.numItems = data.indices.length;		
-
-    if(data.texcoords.length > 0) {
-        mdl.texcoordBuffer = glfx.gl.createBuffer();
-        glfx.gl.bindBuffer(glfx.gl.ARRAY_BUFFER, mdl.texcoordBuffer);                        
-        glfx.gl.bufferData(glfx.gl.ARRAY_BUFFER, new Float32Array(data.texcoords), glfx.gl.STATIC_DRAW);
-        mdl.texcoordBuffer.itemSize = 2;
-        mdl.texcoordBuffer.numItems = data.texcoords.length / 2;			                        
-    }
-
-    if(data.normals.length > 0) {
-        mdl.normalBuffer = glfx.gl.createBuffer();
-        glfx.gl.bindBuffer(glfx.gl.ARRAY_BUFFER, mdl.normalBuffer);       
-        glfx.gl.bufferData(glfx.gl.ARRAY_BUFFER, new Float32Array(data.normals), glfx.gl.STATIC_DRAW);
-        mdl.normalBuffer.itemSize = 3;
-        mdl.normalBuffer.numItems = data.normals / 3;                            
-    }                
-    
-    return mdl;
-    
+    return Model.fromJson(glfx.gl, data);
 };
 
 // Method to load models from JSON file
@@ -2956,29 +2973,6 @@ glfx.models.load = function(_url, _name, _parser, _callback) {
 
     xmlhttp.open("GET", _url, true);
     xmlhttp.send();                
-};
-
-
-glfx.models.generateScreenQuadStrip = function(_name, _callback) {
-    
-    var mdlJSON = {};
-    mdlJSON.verts = [ -1.0,  1.0,  0.0,
-                      -1.0, -1.0,  0.0,
-                       1.0, -1.0,  0.0,
-                       1.0,  1.0,  0.0
-                      ];
-                  
-    mdlJSON.normals = [];
-    mdlJSON.indices = [0, 1, 3, 2];
-    
-    mdlJSON.texcoords = [
-         0.0, 1.0,
-         0.0, 0.0,
-         1.0, 0.0,
-         1.0, 1.0
-    ];
-        
-    glfx.models.buffer[_name] = glfx.models.jsonLoad(mdlJSON);   
 };
 
 // Scene class
@@ -3122,7 +3116,7 @@ glfx.init = function(_canvas, _canvasWidthCSSPx, _canvasHeightCSSPx, _onInitComp
     glfx.gl.framebufferTexture2D(glfx.gl.FRAMEBUFFER, glfx.gl.COLOR_ATTACHMENT0, glfx.gl.TEXTURE_2D, glfx.scene.rttTexture, 0);
     glfx.gl.framebufferRenderbuffer(glfx.gl.FRAMEBUFFER, glfx.gl.DEPTH_ATTACHMENT, glfx.gl.RENDERBUFFER, glfx.scene.rttDepthBuffer);
     
-    glfx.models.generateScreenQuadStrip("rttquad");
+    glfx.models.buffer["rttquad"] = Model.createScreenQuadStrip(glfx.gl); 
 
     // Reset
     glfx.gl.bindTexture(glfx.gl.TEXTURE_2D, null);
@@ -3262,4 +3256,4 @@ glfx.renderViewportQuad = function (_texture, _shaderProgram, _tdelta) {
     return true;
 };
 
-export { glfx, mat4, vec3 };
+export { Model, glfx, mat4, vec3 };
