@@ -3179,6 +3179,7 @@ glfx.renderToFrameBuffer = function(_frameBuffer, _tdelta) {
 
         }
 
+        glfx.gl.useProgram(glfx.scene.graph[i].shprog);
         glfx.scene.graph[i].render(_tdelta, glfx.scene.graph[i], glfx.scene.matModelView, glfx.scene.matPerspective);
     }
 };

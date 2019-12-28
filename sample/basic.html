@@ -29,7 +29,7 @@
                 const vec3 = window.glfx.vec3;
                 const glfx = window.glfx.glfx;
 
-                function wglScene() {
+                async function wglScene() {
                     
                     // init 
                     var canvasElem = document.getElementById('wgl-canvas');
@@ -37,28 +37,17 @@
                     
                     // if we don't do anything further, we'll just be clearing the framebuffer on each frame render
                     
-                    // Load assets for scene
                     // Load basic shaders for rendering
-                    glfx.shaders.load('basic.vs', "vert-shader-basic", glfx.gl.VERTEX_SHADER);
-                    glfx.shaders.load('basictex.fs', "frag-shader-tex", glfx.gl.FRAGMENT_SHADER);
-                    glfx.shaders.load('screenspace.fs', "frag-shader-screenspace", glfx.gl.FRAGMENT_SHADER);
+                    const promiseBasicVertexShader = glfx.shaders.load('basic.vs', "vert-shader-basic", glfx.gl.VERTEX_SHADER);
+                    const promiseBasicFragShader = glfx.shaders.load('basictex.fs', "frag-shader-tex", glfx.gl.FRAGMENT_SHADER);
+                    const promisePostprocessFragShader = glfx.shaders.load('screenspace.fs', "frag-shader-screenspace", glfx.gl.FRAGMENT_SHADER);
 
-                    // Load necessary textures
-                    glfx.textures.load('img/test.png', 'test-tex');					
-
-                    // Load models used in scene
-                    glfx.models.load('cube.json', 'cubemdl', glfx.models.jsonParser);
-                    
-                    glfx.whenAssetsLoaded(function() {
-                    
-                    
-                        var shprog = glfx.shaders.createProgram(
-                            [
-                                glfx.shaders.buffer['vert-shader-basic'], 
-                                glfx.shaders.buffer['frag-shader-tex']
-                            ], 
+                    var basicShaderProgram = null;
+                    Promise.all([promiseBasicVertexShader, promiseBasicFragShader])
+                    .then((_basicShaders) => {
+                        basicShaderProgram = glfx.shaders.createProgram(
+                            _basicShaders, 
                             function(_shprog) {
-
                                 // Setup variables for shader program
                                 _shprog.vertexPositionAttribute = glfx.gl.getAttribLocation(_shprog, "aVertexPosition");
                                 _shprog.pMatrixUniform = glfx.gl.getUniformLocation(_shprog, "uPMatrix");
@@ -67,40 +56,51 @@
                                 
                                 glfx.gl.enableVertexAttribArray(_shprog.vertexPositionAttribute);
                                 glfx.gl.enableVertexAttribArray(_shprog.textureCoordAttribute);
+                            }
+                        );
+                    });
 
+                    var postProcessShaderProgram = null;
+                    Promise.all([promiseBasicVertexShader, promisePostprocessFragShader])
+                    .then((_postProcessShaders) => {
+                        postProcessShaderProgram = glfx.shaders.createProgram(
+                            _postProcessShaders, 
+                            function(_shprog) {
+
+                                // Setup variables for shader program
+                                _shprog.vertexPositionAttribute = glfx.gl.getAttribLocation(_shprog, "aVertexPosition");
+                                _shprog.pMatrixUniform = glfx.gl.getUniformLocation(_shprog, "uPMatrix");
+                                _shprog.mvMatrixUniform = glfx.gl.getUniformLocation(_shprog, "uMVMatrix");
+                                _shprog.textureCoordAttribute = glfx.gl.getAttribLocation(_shprog, "aTextureCoord");
+
+                                _shprog.uPeriod = glfx.gl.getUniformLocation(_shprog, "uPeriod");
+                                _shprog.uSceneWidth = glfx.gl.getUniformLocation(_shprog, "uSceneWidth");
+                                _shprog.uSceneHeight = glfx.gl.getUniformLocation(_shprog, "uSceneHeight");
+                                
+                                glfx.gl.enableVertexAttribArray(_shprog.vertexPositionAttribute);
+                                glfx.gl.enableVertexAttribArray(_shprog.textureCoordAttribute);
                             });
+                    });
 
+                    // Load assets for scene
+                    
+                    // Load necessary textures
+                    glfx.textures.load('img/test.png', 'test-tex');					
 
-                        var postProcessShaderProgram = glfx.shaders.createProgram([glfx.shaders.buffer['vert-shader-basic'], glfx.shaders.buffer['frag-shader-screenspace']], 
-                                                                function(_shprog) {
+                    // Load models used in scene
+                    glfx.models.load('cube.json', 'cubemdl', glfx.models.jsonParser);
 
-                                                                    // Setup variables for shader program
-                                                                    _shprog.vertexPositionAttribute = glfx.gl.getAttribLocation(_shprog, "aVertexPosition");
-                                                                    _shprog.pMatrixUniform = glfx.gl.getUniformLocation(_shprog, "uPMatrix");
-                                                                    _shprog.mvMatrixUniform = glfx.gl.getUniformLocation(_shprog, "uMVMatrix");
-                                                                    _shprog.textureCoordAttribute = glfx.gl.getAttribLocation(_shprog, "aTextureCoord");
-
-                                                                    _shprog.uPeriod = glfx.gl.getUniformLocation(_shprog, "uPeriod");
-                                                                    _shprog.uSceneWidth = glfx.gl.getUniformLocation(_shprog, "uSceneWidth");
-                                                                    _shprog.uSceneHeight = glfx.gl.getUniformLocation(_shprog, "uSceneHeight");
-                                                                    
-                                                                    glfx.gl.enableVertexAttribArray(_shprog.vertexPositionAttribute);
-                                                                    glfx.gl.enableVertexAttribArray(_shprog.textureCoordAttribute);
-
-                                                                });
-                                                                                
-                                        
+                    
+                    glfx.whenAssetsLoaded(function() {                   
                         // add some cubes to the scene graph
-                        var cubeA = new glfx.scene.worldObject(glfx.models.buffer['cubemdl'], shprog);
+                        var cubeA = new glfx.scene.worldObject(glfx.models.buffer['cubemdl'], basicShaderProgram);
                         cubeA.position = vec3.clone([-1.6, 0.0, -25.0]);
                         cubeA.rotation = vec3.clone([0.0, 0.0, 0.0]);
                         cubeA.scale = vec3.clone([0.70, 1.0, 1.0]);
                         cubeA.render = function(tdelta, wobj, matModelView, matPerspective) {
-                            // Setup shader program to use
                             var shprog = wobj.shprog;
-                            glfx.gl.useProgram(shprog);	
-
                             var tex = glfx.textures.buffer['test-tex'];				
+
                             glfx.gl.activeTexture(glfx.gl.TEXTURE0);
                             glfx.gl.bindTexture(glfx.gl.TEXTURE_2D, tex);
                             glfx.gl.uniform1i(shprog.samplerUniform, 0);
@@ -134,7 +134,7 @@
 
 
                         // Add another cube to the scene
-                        var cubeB = new glfx.scene.worldObject(glfx.models.buffer['cubemdl'], shprog);
+                        var cubeB = new glfx.scene.worldObject(glfx.models.buffer['cubemdl'], basicShaderProgram);
                         cubeB.position = vec3.clone([1.6, 0.0, -25.0]);
                         cubeB.rotation = vec3.clone([0.0, 0.0, 0.0]);
                         cubeB.scale = vec3.clone([0.70, 1.0, 1.0]);
@@ -151,10 +151,9 @@
                         
                         cubeB.render = function(tdelta, wobj, matModelView, matPerspective) {
                             // Setup shader program to use
-                            var shprog = wobj.shprog;
-                            glfx.gl.useProgram(shprog);	
+                            var shprog = wobj.shprog;	
+                            var tex = glfx.textures.buffer['test-tex'];	
 
-                            var tex = glfx.textures.buffer['test-tex'];				
                             glfx.gl.activeTexture(glfx.gl.TEXTURE0);
                             glfx.gl.bindTexture(glfx.gl.TEXTURE_2D, tex);
                             glfx.gl.uniform1i(shprog.samplerUniform, 0);

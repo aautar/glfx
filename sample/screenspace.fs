@@ -8,25 +8,19 @@ varying vec2 vTextureCoord;
 
 void main(void) {
 
-    vec4 sum = vec4( 0. );
-    float blurSampleOffsetScale = 2.8;
+    vec4 shiftedSampleLeft = vec4( 0. );
+    vec4 shiftedSampleRight = vec4( 0. );
+
+    float blurSampleOffsetScale = 2.1;
     float px = (1.0 / uSceneWidth) * blurSampleOffsetScale;
     float py = (1.0 / uSceneHeight) * blurSampleOffsetScale;
+    // need depth info
 
     vec4 src = texture2D( uSampler, ( vTextureCoord ) );
 
-    sum += texture2D( uSampler, ( vTextureCoord + vec2(-px, 0) ) );
-    sum += texture2D( uSampler, ( vTextureCoord + vec2(-px, -py) ) );
-    sum += texture2D( uSampler, ( vTextureCoord + vec2(0, -py) ) );
-    sum += texture2D( uSampler, ( vTextureCoord + vec2(px, -py) ) );
-    sum += texture2D( uSampler, ( vTextureCoord + vec2(px, 0) ) );
-    sum += texture2D( uSampler, ( vTextureCoord + vec2(px, py) ) );
-    sum += texture2D( uSampler, ( vTextureCoord + vec2(0, py) ) );
-    sum += texture2D( uSampler, ( vTextureCoord + vec2(-px, py) ) );
-    sum += src;
+    shiftedSampleLeft = texture2D( uSampler, ( vTextureCoord + vec2(-0.00525, 0) ) );
+    shiftedSampleRight = texture2D( uSampler, ( vTextureCoord + vec2(0.00525, 0) ) );
 
-    sum = sum / 9.0;
-
-    gl_FragColor =  src + (sum * 2.5 * uPeriod);
+    gl_FragColor = src * vec4(1, shiftedSampleLeft.g, 1, 1) * vec4(shiftedSampleRight.r, 1, 1, 1);
 
 }
